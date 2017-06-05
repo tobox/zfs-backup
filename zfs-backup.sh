@@ -291,7 +291,6 @@ if [ $COUNT -lt 1 ]; then
     rm $PID
     exit 2
 fi
-$ZFS get -s local -H -o name,value $PROP |
 while read dataset value
 do
     case $value in
@@ -319,7 +318,7 @@ do
     if [ $STATUS -gt 0 ]; then
 	FAIL=$((FAIL | STATUS))
     fi
-done
+done < < ($ZFS get -s local -H -o name,value $PROP )
 
 if [ $FAIL -gt 0 ]; then
     if [ $((FAIL & 1)) -gt 0 ]; then
