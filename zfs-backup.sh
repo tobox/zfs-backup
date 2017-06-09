@@ -168,7 +168,7 @@ do_backup() {
 		;;
 	*)	BAD=1
     esac
-    if [[ $# -ne 2 -o "$BAD" ]]; then
+    if [[ $# -ne 2 ]] || [[ "$BAD" ]]; then
 	echo "Oops! do_backup called improperly:" 1>&2
 	echo "    $*" 1>&2
 	return 2
