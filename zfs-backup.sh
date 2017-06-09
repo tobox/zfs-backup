@@ -269,7 +269,7 @@ if [[ -e $LOCK ]]; then
         fi
 	RUN_COUNT=$(<$LOCK)
 	if [[ "$RUN_COUNT" -ge "$STOP_COUNT" ]]; then
-	    # We've already failed so many times we should probably stop.
+	    # We've already failed (and emailed) so many times we should probably stop.
 	    exit 2
 	fi
     fi
@@ -334,6 +334,17 @@ if [[ $DS_HARD_FAIL -gt 0 ]] ; then
         (( RUN_COUNT++ ))
         # Store the value
         echo $RUN_COUNT > $LOCK
+        if [[ "$EMAIL_COUNT" -gt 0 ]] && [[ "$RUN_COUNT" -eq "$EMAIL_COUNT"
+            # Max opportunities used up - should we email?
+            if [[ -n "$SUBJECT_BAD" ]] && [[ -n "$FROM" ]] && [[ -n "$TO" ]
+                _log "Major problem running zfs-backup.sh. Things look bad.
+                 $PRINTF "From:$FROM\nTo:$TO\nSubject:$SUBJECT_BAD\n\n$BODY
+            else
+                echo "Please configure the necessary email variables, eithe
+                echo "or within the zfs-backup.sh script itself."
+                exit 2
+            fi
+        fi
 
     fi
 else
@@ -345,6 +356,13 @@ else
     if [[ -e $LOCK ]]; then
         # Erase the previous sins.
         rm $LOCK
+        if [[ "$EMAIL_COUNT" -gt 0 ]] && [[ "$RUN_COUNT" -ge "$EMAIL_COUNT"
+            # Seems we fixed it (whatever it was) and asked to be notified
+            if [[ -n "$SUBJECT_GOOD" ]] && [[ -n "$FROM" ]] && [[ -n "$TO"
+                _log "It was horrible, but now it's better. No need to logi
+                 $PRINTF "From:$FROM\nTo:$TO\nSubject:$SUBJECT_GOOD\n\n$BOD
+            fi
+        fi
     fi
 fi
 
