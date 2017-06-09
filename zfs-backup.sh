@@ -37,6 +37,14 @@
 # OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
 # SUCH DAMAGE.
 
+#
+# Exit values
+# 0: Intended operation completed, or only soft fail
+# 1: Syntax error using the script
+# 2-9: Same as return values from do_backup() function below.
+# 10 = Too many faild attempts - script isn't even trying
+# 11 = No properly configured datasets
+# 12 = Not all email parameters set correctly
 
 # Basic installation: After following the prerequisites, run manually to verify
 # operation, and then add a line like the following to zfssnap's crontab:
@@ -80,6 +88,25 @@ REMHOST="backupserver.my.domain"
 REMPOOL="backuppool"
 REMZFS="$ZFS"
 
+#########################################################################
+#                                                                       #
+#  Start NAS4Free email notification section                            #
+#                                                                       #
+#########################################################################
+
+# This the number of (silent) fails you'd like before you get an email
+# Set to 0 to never get an email (default)
+EMAIL_COUNT=0
+# This is total number of fails you'd like before the script stops trying
+# Set to 0 for inifinite attempts. Default = 10.
+STOP_COUNT=10
+FROM=""
+TO=""
+SUBJECT_GOOD=""
+SUBJECT_BAD=""
+PRINTF=/usr/bin/printf
+MSMTP=/usr/local/bin/msmtp
+MSMTPCONF=/var/etc/msmtp.conf
 
 usage() {
     echo "Usage: $(basename $0) [[ -nv ]] [[-r N ]] [[ [[-f]] cfg_file ]]"
@@ -147,6 +174,19 @@ fi
 # Usage: do_backup pool/fs/to/backup receive_option
 #   receive_option should be -d for full path and -e for base name
 #   See the descriptions in the 'zfs receive' section of zfs(1M) for more details.
+
+# Return values:
+#  0 = Operation completed successfully/nothing to send
+#  1 = ** Not used, to avoid clashing with shell commands
+#  2 = Syntax error with the function
+#  3 = Couldn't find most recent snapshot matching tag
+#  4 = No local snapshot matching tag
+#  5 = Trouble fetching remote snapshot list
+#  6 = Newest remote snapshot doesn't exist locally
+#  7 = Local snapshot has disappeared
+#  8 = Insane snapshot times (remote newer than local)
+#  9 = Trouble sending snapshot
+#
 do_backup() {
 
     DATASET=$1
@@ -179,14 +219,14 @@ do_backup() {
 	if [[ -z "$newest_local" ]]; then
 	    echo "Error: could not find $(ord $RECENT) most recent snapshot matching tag" >&2
 	    echo "'$TAG' for ${DATASET}!" >&2
-	    return 1
+	    return 3
 	fi
 	msg="using local snapshot ($(ord $RECENT) most recent):"
     else
 	newest_local="$($ZFS list -t snapshot -H -S creation -o name -d 1 $DATASET | grep $TAG | head -1)"
 	if [[ -z "$newest_local" ]]; then
 	    echo "Error: no snapshots matching tag '$TAG' for ${DATASET}!" >&2
-	    return 1
+	    return 4
 	fi
 	msg="newest local snapshot:"
     fi
@@ -206,7 +246,7 @@ do_backup() {
     if [[ -z $newest_remote ]]; then
 	echo "$err_msg" >&2
 	[[ $DEBUG ]] || touch $LOCK
-	return 1
+	return 5
     fi
     snap1=${newest_remote#*@}
     [[ "$DEBUG" ]] || [[ "$VERBOSE" ]] && echo "newest remote snapshot: $snap1"
@@ -220,14 +260,14 @@ do_backup() {
 	echo "to a snapshot that exists on this host (newest local snapshot with the"
 	echo "tag $TAG is $snap2)."
 	[[ $DEBUG ]] || touch $LOCK
-	return 1
+	return 6
     fi
     if ! $ZFS list -t snapshot -H $DATASET@$snap2 > /dev/null 2>&1; then
 	exec 1>&2
 	echo "Something has gone horribly wrong -- local snapshot $snap2"
 	echo "has suddenly disappeared!"
 	[[ $DEBUG ]] || touch $LOCK
-	return 1
+	return 7
     fi
 
     if [[ "$snap1" = "$snap2" ]]; then
@@ -241,7 +281,7 @@ do_backup() {
     if [[ $snap2time -lt $snap1time ]]; then
 	echo "Error: target snapshot $snap2 is older than $snap1!"
 	echo "Did you go too far back with '-r'?"
-	return 1
+	return 8
     fi
 
     if [[ $DEBUG ]]; then
@@ -252,7 +292,7 @@ do_backup() {
 	  $REMZFS_CMD recv $VERBOSE $RECV_OPT -F $REMPOOL; then
 	    echo 1>&2 "Error sending snapshot."
 	    touch $LOCK
-	    return 1
+	    return 9
 	fi
     fi
 }
@@ -270,7 +310,7 @@ if [[ -e $LOCK ]]; then
 	RUN_COUNT=$(<$LOCK)
 	if [[ "$RUN_COUNT" -ge "$STOP_COUNT" ]]; then
 	    # We've already failed (and emailed) so many times we should probably stop.
-	    exit 2
+	    exit 10
 	fi
     fi
 fi
@@ -291,7 +331,7 @@ if [[ $COUNT -lt 1 ]]; then
     echo "No datasets configured for backup!  Please set the '$PROP' property"
     echo "appropriately on the datasets you wish to back up."
     rm $PID
-    exit 2
+    exit 11
 fi
 while read dataset value
 do
@@ -342,7 +382,7 @@ if [[ $DS_HARD_FAIL -gt 0 ]] ; then
             else
                 echo "Please configure the necessary email variables, eithe
                 echo "or within the zfs-backup.sh script itself."
-                exit 2
+                exit 12
             fi
         fi
 
