@@ -261,19 +261,18 @@ do_backup() {
 if [[ -e $LOCK ]]; then
     # this would be nicer as SMF maintenance state
     if [[ -s $LOCK  ]]; then
+	# The lock exists, and it has a size. This is not the first failure.
 	# in normal mode, only send one email about the failure, not every run
 	if [[ "$VERBOSE" ]]; then
             echo "Service is in maintenance state; please correct and then"
             echo "rm $LOCK before running again."
         fi
-    else
-	# write something to the file so it will be caught by the above
-	# test and cron output (and thus, emails sent) won't happen again
-        echo "Maintenance mode, email has been sent once." > $LOCK
-        echo "Service is in maintenance state; please correct and then"
-        echo "rm $LOCK before running again."
+	RUN_COUNT=$(<$LOCK)
+	if [[ "$RUN_COUNT" -ge "$STOP_COUNT" ]]; then
+	    # We've already failed so many times we should probably stop.
+	    exit 2
+	fi
     fi
-    exit 2
 fi
 
 if [[ -e "$PID" ]]; then
@@ -282,6 +281,9 @@ if [[ -e "$PID" ]]; then
 fi
 echo $$ > $PID
 
+BODY=""
+DS_SOFT_FAIL=0
+DS_HARD_FAIL=0
 FAIL=0
 # get the datasets that have our backup property set
 COUNT=$($ZFS get -s local -H -o name,value $PROP | wc -l)
@@ -320,12 +322,29 @@ do
     fi
 done < < ($ZFS get -s local -H -o name,value $PROP )
 
-if [[ $FAIL -gt 0 ]]; then
-    if [[ $((FAIL & 1)) -gt 0 ]]; then
-	echo "There were errors backing up some datasets." >&2
+if [[ $DS_HARD_FAIL -gt 0 ]] ; then
+    echo "There were errors backing up some datasets." >&2
+    if [[ -e $LOCK ]]; then
+        # We failed at something, and at least touched the lockfile (this o
+        if [[ "$VERBOSE" ]]; then
+            echo "Service is in maintenance state; please correct and then"
+            echo "rm $LOCK before running again."
+        fi
+        # We sure messed that one up. Let's keep track of how many times.
+        (( RUN_COUNT++ ))
+        # Store the value
+        echo $RUN_COUNT > $LOCK
+
     fi
-    if [[ $((FAIL & 2)) -gt 0 ]]; then
-	echo "Some datasets had misconfigured $PROP properties." >&2
+else
+    if [[ $DS_SOFT_FAIL -gt 0 ]]; then
+        echo "Some datasets had misconfigured/absent $PROP properties." >&2
+    fi
+
+    # The last run had a "0" fail value
+    if [[ -e $LOCK ]]; then
+        # Erase the previous sins.
+        rm $LOCK
     fi
 fi
 
