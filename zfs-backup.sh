@@ -100,9 +100,10 @@ usage() {
     echo "Usage: $(basename $0) [[ -nv ]] [[-r N ]] [[ [[-f]] cfg_file ]]"
     echo "  -n\t\tdebug (dry-run) mode"
     echo "  -v\t\tverbose mode"
-    echo "  -f\t\tspecify a configuration file"
+    echo "  -c\t\tspecify a configuration file"
+    echo "  -f\t\tset zfs receive with FORCE"
     echo "  -r N\t\tuse the Nth most recent snapshot instead of the newest"
-    echo "If the configuration file is last option specified, the -f flag is optional."
+    echo "If the configuration file is last option specified, the -c flag is optional."
     exit 1
 }
 # simple ordinal function, does not validate input
@@ -126,8 +127,8 @@ for opt; do
 	-h|-\?) usage;;
 	-n) dbg_flag=Y; shift;;
 	-v) verb_flag=Y; shift;;
-        -F) force_flag=Y; shift;;
-	-f) CFG=$2; shift 2;;
+        -f) force_flag=Y; shift;;
+	-c) CFG=$2; shift 2;;
 	-r) recent_flag=$2; shift 2;;
 	--) shift; break;;
     esac
