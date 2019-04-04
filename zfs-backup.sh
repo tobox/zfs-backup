@@ -97,7 +97,7 @@ ADDRESSOK=""
 ADDRESSFAIL="24@example.com"
 
 usage() {
-    echo "Usage: $(basename $0) [[ -nv ]] [[-r N ]] [[ [[-f]] cfg_file ]]"
+    echo "Usage: $(basename $0) [[ -nv ]] [[ -f ]] [[-r N ]] [[ [[-c]] cfg_file ]]"
     echo "  -n\t\tdebug (dry-run) mode"
     echo "  -v\t\tverbose mode"
     echo "  -c\t\tspecify a configuration file"
@@ -118,7 +118,7 @@ ord() {
 }
 
 # Option parsing
-set -- $(getopt h?nvf:r: $*)
+set -- $(getopt h?nvfc:r: $*)
 if [ $? -ne 0 ]; then
     usage
 fi
