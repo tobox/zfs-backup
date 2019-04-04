@@ -17,8 +17,8 @@ snapshots that follow a given pattern will suffice.
 Command-line options:
   -n		debug/dry-run mode
   -v		verbose mode
-  -f    file	specify a configuration file
-  -F    force (if zfs backup fail)
+  -c    file	specify a configuration file
+  -f    force (if zfs backup fail)
   -r N		use the Nth most recent local snapshot rather than the newest
   -h, -?	display help message
 
@@ -99,4 +99,4 @@ PROCEDURE:
   * if anything fails, set svc to maint. and exit
 
 HOW TO RUN (on backup server --test run)
-./zfs-backup -nvf example.cfg
+./zfs-backup -nvc example.cfg
