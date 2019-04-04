@@ -385,7 +385,7 @@ done < <(ssh $REMUSER@$REMHOST $REMZFS get -s local -H -o name,value $PROP) # Mo
 if [[ $FAIL -gt 0 ]]; then
     if [[ $((FAIL & 1)) -gt 0 ]]; then
          echo "There were errors backing up some datasets." >&2
-            BODY="zfs backup fails from $REMHOST to local zfs $LOCALPOOL Please run on backupserver for more info: ./zfs-backup.sh -nv -f $CFG"
+            BODY="zfs backup fails from $REMHOST to local zfs $LOCALPOOL Please run on backupserver for more info: ./zfs-backup.sh -nv -c $CFG"
             TITLE="ZFS BACKUP FAIL $LOCALPOOL"
     fi
     if [[ $((FAIL & 2)) -gt 0 ]]; then
