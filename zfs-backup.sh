@@ -410,7 +410,7 @@ if [[ -z "$DEBUG" ]]; then
 fi
 
 if [[ -e "$PID" ]]; then
-    rm $LOCK
+    rm -f $LOCK
 fi
 rm $PID
 exit $FAIL
