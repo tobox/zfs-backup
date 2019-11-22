@@ -94,7 +94,7 @@ MAILFROM="backup@example.com"
 # use only MAILTO for both or ADDRESSOK/ADDRESSFAIL to specific addresses
 MAILTO=""
 ADDRESSOK=""
-ADDRESSFAIL="24@example.com"
+ADDRESSFAIL=""
 
 usage() {
     echo "Usage: $(basename $0) [[ -nv ]] [[ -f ]] [[-r N ]] [[ [[-c]] cfg_file ]]"
