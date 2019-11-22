@@ -70,6 +70,7 @@ LOCK="/var/tmp/zfsbackupdefault.lock"
 PID="/var/tmp/zfsbackupdefault.pid"
 CFG="/var/lib/zfssnap/zfs-backup.cfg"
 ZFS="/sbin/zfs"
+PV="cat"
 # Replace with sudo(8) if pfexec(1) is not available on your OS
 PFEXEC=`which pfexec` 	# no need if root access or zfs allow user
 
@@ -226,9 +227,9 @@ do_backup() {
         if [ $INITSNAP ]; then
             if [ $DEBUG ]; then
                 echo "would run: $REMZFS_CMD send $DATASET@$snap2 |"
-                echo " mbuffer -r $COPYSPEED | pv | $ZFS recv $VERBOSE $FORCE $RECV_OPT $LOCALPOOL"
+                echo " mbuffer -r $COPYSPEED | $PV | $ZFS recv $VERBOSE $FORCE $RECV_OPT $LOCALPOOL"
             else
-                if ! ssh -n $REMUSER@$REMHOST $REMZFS send $DATASET@$snap2 | mbuffer -r $COPYSPEED | pv | \
+                if ! ssh -n $REMUSER@$REMHOST $REMZFS send $DATASET@$snap2 | mbuffer -r $COPYSPEED | $PV | \
                     $ZFS recv $VERBOSE $FORCE $RECV_OPT $LOCALPOOL; then
                     #echo 1>&2 "Error sending initial snapshot."
                     #touch $LOCK
@@ -287,7 +288,7 @@ do_backup() {
 
     if [[ $DEBUG ]]; then
 	echo "would run: $REMZFS_CMD send -I $snap1 $DATASET@$snap2 |"
-	echo " mbuffer -r $COPYSPEED | pv | $ZFS recv $VERBOSE $FORCE $RECV_OPT $LOCALPOOL"
+	echo " mbuffer -r $COPYSPEED | $PV | $ZFS recv $VERBOSE $FORCE $RECV_OPT $LOCALPOOL"
     else
 	#mbuffer -s 128k -m 1G -I 9090 | $ZFS recv $VERBOSE $RECV_OPT $LOCALPOOL
         #if ! ssh -n $REMUSER@$REMHOST $REMZFS send -I $DATASET@$snap1 $DATASET@$snap2 | mbuffer -s 128k -m 1G -O $REMHOST:9090; then
@@ -296,7 +297,7 @@ do_backup() {
         #    return 1
         #fi 
 
-        if ! ssh -n $REMUSER@$REMHOST $REMZFS send -I $DATASET@$snap1 $DATASET@$snap2 | mbuffer -r $COPYSPEED | pv | \
+        if ! ssh -n $REMUSER@$REMHOST $REMZFS send -I $DATASET@$snap1 $DATASET@$snap2 | mbuffer -r $COPYSPEED | $PV | \
 	  $ZFS recv $VERBOSE $FORCE $RECV_OPT $LOCALPOOL; then
 	    echo 1>&2 "Error sending snapshot."
 	    touch $LOCK
